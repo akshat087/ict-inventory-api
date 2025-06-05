@@ -128,7 +128,7 @@ async def export_inventory_analysis(req: FileRequest):
 def query_openai(prompt: str) -> str:
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-turbo",
             messages=[
                 {"role": "system", "content": "You are a DORA compliance expert for financial institutions."},
                 {"role": "user", "content": prompt}
