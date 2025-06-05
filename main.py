@@ -40,7 +40,7 @@ async def preview_inventory(req: FileRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to download file: {str(e)}"})
 
-    # Step 2: Read file + analyze full content
+    # Step 2: Read and clean data
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
             tmp_file.write(fh.getvalue())
@@ -48,16 +48,20 @@ async def preview_inventory(req: FileRequest):
 
         df = pd.read_excel(tmp_path)
 
-        # Limit to a reasonable number of rows for GPT context (adjust if needed)
+        # Limit to a manageable number of rows
         max_assets = 20
         df = df.head(max_assets)
+
+        # Clean for GPT and JSON
+        df = df.fillna("N/A")
+        df = df.astype(str)
         preview = df.to_dict(orient="records")
 
-        # Step 3: Format prompt
+        # Format prompt for GPT
         formatted_assets = ""
         for i, asset in enumerate(preview, start=1):
-            asset_description = ", ".join([f"{k}: {v}" for k, v in asset.items()])
-            formatted_assets += f"{i}. {asset_description}\n"
+            description = ", ".join([f"{k}: {v}" for k, v in asset.items()])
+            formatted_assets += f"{i}. {description}\n"
 
         prompt = f"""
 You are a DORA compliance and ICT risk expert for banking systems.
@@ -87,7 +91,6 @@ Assets:
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to process Excel file: {str(e)}"})
 
-
 def query_openai(prompt: str) -> str:
     try:
         response = openai.ChatCompletion.create(
@@ -96,7 +99,7 @@ def query_openai(prompt: str) -> str:
                 {"role": "system", "content": "You are a banking ICT risk and DORA compliance expert."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=300
+            max_tokens=1000
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
