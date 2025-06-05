@@ -32,10 +32,9 @@ class FileRequest(BaseModel):
     file_id: str
     output_folder_id: Optional[str] = None
 
-@app.post("/analyze-inventory")
-async def analyze_inventory(req: FileRequest):
-    print("Endpoint called by GPT")
-    return JSONResponse(status_code=500, content={"error": "This is a test failure."})
+@app.post("/analyze-inventory-v2")
+async def analyze_inventory_v2(req: FileRequest):
+    print("v2 called by GPT")
     file_id = req.file_id
     output_folder_id = req.output_folder_id
 
