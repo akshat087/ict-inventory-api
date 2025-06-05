@@ -32,9 +32,9 @@ class FileRequest(BaseModel):
     file_id: str
     output_folder_id: Optional[str] = None
 
-@app.post("/analyze-inventory-v2")
-async def analyze_inventory_v2(req: FileRequest):
-    print("v2 called by GPT")
+@app.post("/analyze-inventory-v3")
+async def analyze_inventory_v3(req: FileRequest):
+    print("v3 called by GPT")
     file_id = req.file_id
     output_folder_id = req.output_folder_id
 
