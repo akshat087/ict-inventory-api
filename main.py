@@ -13,10 +13,9 @@ from googleapiclient.http import MediaIoBaseDownload
 
 app = FastAPI()
 
-# Load credentials and keys from environment
+# Load credentials
 openai.api_key = os.getenv("OPENAI_API_KEY")
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-
 SCOPES = ['https://www.googleapis.com/auth/drive']
 credentials = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES
@@ -28,9 +27,9 @@ class FileRequest(BaseModel):
 
 @app.post("/preview-inventory")
 async def preview_inventory(req: FileRequest):
-    print(f"Called with file_id: {req.file_id}")
+    print(f"✅ Called with file_id: {req.file_id}")
 
-    # Step 1: Download the Excel file from Google Drive
+    # Step 1: Download file
     try:
         request = drive_service.files().get_media(fileId=req.file_id)
         fh = io.BytesIO()
@@ -41,7 +40,7 @@ async def preview_inventory(req: FileRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to download file: {str(e)}"})
 
-    # Step 2: Save temporarily and read with pandas
+    # Step 2: Read file + analyze
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
             tmp_file.write(fh.getvalue())
@@ -50,6 +49,34 @@ async def preview_inventory(req: FileRequest):
         df = pd.read_excel(tmp_path)
         preview = df.head(3).to_dict(orient="records")
 
-        return JSONResponse(content={"file_preview": preview})
+        # Step 3: Analyze with GPT
+        prompt = f"""
+You are a DORA compliance assistant. Analyze the following ICT asset inventory entries and identify any key ICT risks, DORA-relevant issues, or gaps in governance or control. Keep your response short and high-value.
+
+Data:
+{preview}
+        """
+
+        analysis = query_openai(prompt)
+
+        return JSONResponse(content={
+            "file_preview": preview,
+            "analysis": analysis
+        })
+
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to process Excel file: {str(e)}"})
+
+def query_openai(prompt: str) -> str:
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a banking ICT risk and DORA compliance expert."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"[OpenAI Error] {str(e)}"
