@@ -40,21 +40,41 @@ async def preview_inventory(req: FileRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to download file: {str(e)}"})
 
-    # Step 2: Read file + analyze
+    # Step 2: Read file + analyze full content
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
             tmp_file.write(fh.getvalue())
             tmp_path = tmp_file.name
 
         df = pd.read_excel(tmp_path)
-        preview = df.head(3).to_dict(orient="records")
 
-        # Step 3: Analyze with GPT
+        # Limit to a reasonable number of rows for GPT context (adjust if needed)
+        max_assets = 20
+        df = df.head(max_assets)
+        preview = df.to_dict(orient="records")
+
+        # Step 3: Format prompt
+        formatted_assets = ""
+        for i, asset in enumerate(preview, start=1):
+            asset_description = ", ".join([f"{k}: {v}" for k, v in asset.items()])
+            formatted_assets += f"{i}. {asset_description}\n"
+
         prompt = f"""
-You are a DORA compliance assistant. Analyze the following ICT asset inventory entries and identify any key ICT risks, DORA-relevant issues, or gaps in governance or control. Keep your response short and high-value.
+You are a DORA compliance and ICT risk expert for banking systems.
 
-Data:
-{preview}
+Please analyze the following ICT assets and provide for **each one**:
+- The top ICT risks
+- Recommended controls (e.g. standards, processes, frameworks)
+- Any key system or vendor dependencies
+
+Format your response per asset like:
+**Asset Name**
+- Risks:
+- Controls:
+- Dependencies:
+
+Assets:
+{formatted_assets}
         """
 
         analysis = query_openai(prompt)
@@ -66,6 +86,7 @@ Data:
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Failed to process Excel file: {str(e)}"})
+
 
 def query_openai(prompt: str) -> str:
     try:
