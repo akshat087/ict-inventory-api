@@ -7,14 +7,15 @@ import tempfile
 import os
 import io
 import openai
+from openai import OpenAI
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 
 app = FastAPI()
 
-# Load credentials
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize OpenAI client (1.x+)
+client = OpenAI()
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 SCOPES = ['https://www.googleapis.com/auth/drive']
 credentials = service_account.Credentials.from_service_account_file(
@@ -126,7 +127,7 @@ async def export_inventory_analysis(req: FileRequest):
 
 def query_openai(prompt: str) -> str:
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a DORA compliance expert for financial institutions."},
