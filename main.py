@@ -19,7 +19,7 @@ app = FastAPI()
 #openai.api_key = OPENAI_API_KEY
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "/etc/secrets/service_account.json")
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 credentials = service_account.Credentials.from_service_account_file(
