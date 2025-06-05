@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
@@ -27,9 +26,12 @@ class FileRequest(BaseModel):
     file_id: str
     output_folder_id: Optional[str] = None
 
+def is_missing(val):
+    return str(val).strip().upper() in ["", "N/A", "NA", "NONE"]
+
 @app.post("/preview-inventory")
 async def preview_inventory(req: FileRequest):
-    print(f"/preview-inventory called with file_id: {req.file_id}")
+    print(f"✅ /preview-inventory called with file_id: {req.file_id}")
     try:
         request = drive_service.files().get_media(fileId=req.file_id)
         fh = io.BytesIO()
@@ -78,7 +80,7 @@ Assets:
 
 @app.post("/export-inventory-analysis")
 async def export_inventory_analysis(req: FileRequest):
-    print(f"/export-inventory-analysis called with file_id: {req.file_id}")
+    print(f"✅ /export-inventory-analysis called with file_id: {req.file_id}")
     try:
         request = drive_service.files().get_media(fileId=req.file_id)
         fh = io.BytesIO()
@@ -96,13 +98,13 @@ async def export_inventory_analysis(req: FileRequest):
 
         for index, row in df.iterrows():
             asset_description = ", ".join([f"{k}: {v}" for k, v in row.items()])
-            if "Identified ICT Risks" not in df.columns or not row.get("Identified ICT Risks"):
+            if "Identified ICT Risks" not in df.columns or is_missing(row.get("Identified ICT Risks")):
                 prompt = f"What are the ICT risks for: {asset_description}?"
                 df.at[index, "Identified ICT Risks"] = query_openai(prompt)
-            if "Recommended Controls" not in df.columns or not row.get("Recommended Controls"):
+            if "Recommended Controls" not in df.columns or is_missing(row.get("Recommended Controls")):
                 prompt = f"What controls should be applied for: {asset_description}?"
                 df.at[index, "Recommended Controls"] = query_openai(prompt)
-            if "Key Dependencies" not in df.columns or not row.get("Key Dependencies"):
+            if "Key Dependencies" not in df.columns or is_missing(row.get("Key Dependencies")):
                 prompt = f"What are the key system or vendor dependencies for: {asset_description}?"
                 df.at[index, "Key Dependencies"] = query_openai(prompt)
 
