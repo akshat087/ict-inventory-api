@@ -34,6 +34,7 @@ class FileRequest(BaseModel):
 
 @app.post("/analyze-inventory")
 async def analyze_inventory(req: FileRequest):
+    print("Endpoint called by GPT")
     file_id = req.file_id
     output_folder_id = req.output_folder_id
 
