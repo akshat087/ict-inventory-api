@@ -33,6 +33,7 @@ class FileRequest(BaseModel):
 
 @app.post("/analyze-inventory")
 async def analyze_inventory(req: FileRequest):
+    print("Received request:", req.file_id, req.output_folder_id)
     file_id = req.file_id
     output_folder_id = req.output_folder_id
 
