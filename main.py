@@ -14,10 +14,12 @@ import io
 app = FastAPI()
 
 # Replace with your OpenAI API key and Google service account credentials path
-OPENAI_API_KEY = "your-openai-api-key"
-SERVICE_ACCOUNT_FILE = "service_account.json"
+#OPENAI_API_KEY = "your-openai-api-key"
+#SERVICE_ACCOUNT_FILE = "service_account.json"
+#openai.api_key = OPENAI_API_KEY
 
-openai.api_key = OPENAI_API_KEY
+openai.api_key = os.getenv("OPENAI_API_KEY")
+SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 credentials = service_account.Credentials.from_service_account_file(
