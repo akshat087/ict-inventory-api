@@ -32,7 +32,7 @@ def is_missing(val):
 
 @app.post("/preview-inventory")
 async def preview_inventory(req: FileRequest):
-    print(f"✅ /preview-inventory called with file_id: {req.file_id}")
+    print(f"/preview-inventory called with file_id: {req.file_id}")
     try:
         request = drive_service.files().get_media(fileId=req.file_id)
         fh = io.BytesIO()
@@ -81,7 +81,7 @@ Assets:
 
 @app.post("/export-inventory-analysis")
 async def export_inventory_analysis(req: FileRequest):
-    print(f"✅ /export-inventory-analysis called with file_id: {req.file_id}")
+    print(f"/export-inventory-analysis called with file_id: {req.file_id}")
     try:
         request = drive_service.files().get_media(fileId=req.file_id)
         fh = io.BytesIO()
