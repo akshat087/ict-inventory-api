@@ -78,7 +78,7 @@ async def analyze_inventory(req: FileRequest):
     }
     media = MediaFileUpload(updated_path, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
-
+    print("Upload response:", uploaded_file)
     return JSONResponse(content={"updated_file_link": uploaded_file.get("webViewLink")})
 
 def query_openai(prompt):
