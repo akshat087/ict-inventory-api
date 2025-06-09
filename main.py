@@ -16,6 +16,7 @@ from googleapiclient.http import MediaIoBaseDownload
 
 app = FastAPI()
 
+# Environment & setup
 client = OpenAI()
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -24,9 +25,11 @@ credentials = service_account.Credentials.from_service_account_file(
 )
 drive_service = build('drive', 'v3', credentials=credentials)
 
-# Serve static files from 'files/' directory
-os.makedirs("files", exist_ok=True)
-app.mount("/files", StaticFiles(directory="files"), name="files")
+# Define and mount static directory using absolute path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FILES_DIR = os.path.join(BASE_DIR, "files")
+os.makedirs(FILES_DIR, exist_ok=True)
+app.mount("/files", StaticFiles(directory=FILES_DIR), name="files")
 
 class FileRequest(BaseModel):
     file_id: str
@@ -37,7 +40,7 @@ def is_missing(val):
 @app.post("/generate-inventory-analysis")
 async def generate_inventory_analysis(req: FileRequest):
     try:
-        # Download the original Excel file from Google Drive
+        # Download file from Google Drive
         request = drive_service.files().get_media(fileId=req.file_id)
         fh = io.BytesIO()
         downloader = MediaIoBaseDownload(fh, request)
@@ -45,11 +48,12 @@ async def generate_inventory_analysis(req: FileRequest):
         while not done:
             status, done = downloader.next_chunk()
 
-        # Save to temp, read, and clean
+        # Save to temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
             tmp_file.write(fh.getvalue())
             tmp_path = tmp_file.name
 
+        # Read and clean DataFrame
         df = pd.read_excel(tmp_path)
         df = df.head(20).fillna("N/A").astype(str)
 
@@ -65,13 +69,15 @@ async def generate_inventory_analysis(req: FileRequest):
                 prompt = f"What are the key system or vendor dependencies for: {asset_description}?"
                 df.at[index, "Key Dependencies"] = query_openai(prompt)
 
-        # Save to local files folder
+        # Save to files directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"inventory_analyzed_{timestamp}.xlsx"
-        filepath = os.path.join("files", filename)
+        filepath = os.path.join(FILES_DIR, filename)
         df.to_excel(filepath, index=False)
 
-        download_url = f"/files/{filename}"
+        # Construct full download URL
+        backend_url = os.getenv("BACKEND_URL", "https://ict-inventory-api.onrender.com")
+        download_url = f"{backend_url}/files/{filename}"
         return JSONResponse(content={"download_link": download_url})
 
     except Exception as e:
