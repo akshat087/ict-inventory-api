@@ -79,52 +79,6 @@ Assets:
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-@app.post("/export-inventory-analysis")
-async def export_inventory_analysis(req: FileRequest):
-    print(f"/export-inventory-analysis called with file_id: {req.file_id}")
-    try:
-        request = drive_service.files().get_media(fileId=req.file_id)
-        fh = io.BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
-            tmp_file.write(fh.getvalue())
-            tmp_path = tmp_file.name
-
-        df = pd.read_excel(tmp_path)
-        df = df.head(20).fillna("N/A").astype(str)
-
-        for index, row in df.iterrows():
-            asset_description = ", ".join([f"{k}: {v}" for k, v in row.items()])
-            if "Identified ICT Risks" not in df.columns or is_missing(row.get("Identified ICT Risks")):
-                prompt = f"What are the ICT risks for: {asset_description}?"
-                df.at[index, "Identified ICT Risks"] = query_openai(prompt)
-            if "Recommended Controls" not in df.columns or is_missing(row.get("Recommended Controls")):
-                prompt = f"What controls should be applied for: {asset_description}?"
-                df.at[index, "Recommended Controls"] = query_openai(prompt)
-            if "Key Dependencies" not in df.columns or is_missing(row.get("Key Dependencies")):
-                prompt = f"What are the key system or vendor dependencies for: {asset_description}?"
-                df.at[index, "Key Dependencies"] = query_openai(prompt)
-
-        updated_path = tmp_path.replace(".xlsx", "_analyzed.xlsx")
-        df.to_excel(updated_path, index=False)
-
-        file_metadata = {
-            'name': os.path.basename(updated_path),
-            'parents': [req.output_folder_id] if req.output_folder_id else []
-        }
-        media = MediaFileUpload(updated_path, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        uploaded = drive_service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
-
-        drive_service.permissions().create(fileId=uploaded['id'], body={'type': 'anyone', 'role': 'reader'}).execute()
-        return JSONResponse(content={"updated_file_link": uploaded.get("webViewLink")})
-
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
 def query_openai(prompt: str) -> str:
     try:
         response = client.chat.completions.create(
