@@ -74,7 +74,23 @@ Assets:
 
         analysis = query_openai(prompt)
 
-        return JSONResponse(content={"file_preview": preview, "analysis": analysis})
+        for index, row in df.iterrows():
+            asset_description = ", ".join([f"{k}: {v}" for k, v in row.items()])
+            if "Identified ICT Risks" not in df.columns or is_missing(row.get("Identified ICT Risks")):
+                prompt = f"What are the ICT risks for: {asset_description}?"
+                df.at[index, "Identified ICT Risks"] = query_openai(prompt)
+            if "Recommended Controls" not in df.columns or is_missing(row.get("Recommended Controls")):
+                prompt = f"What controls should be applied for: {asset_description}?"
+                df.at[index, "Recommended Controls"] = query_openai(prompt)
+            if "Key Dependencies" not in df.columns or is_missing(row.get("Key Dependencies")):
+                prompt = f"What are the key system or vendor dependencies for: {asset_description}?"
+                df.at[index, "Key Dependencies"] = query_openai(prompt)
+
+        updated_path = tmp_path.replace(".xlsx", "_analyzed.xlsx")
+        df.to_excel(updated_path, index=False)
+
+
+        return JSONResponse(content={"file_preview": preview, "analysis": analysis, "file": updated_path})
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
